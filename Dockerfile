@@ -1,5 +1,4 @@
-
-FROM php:7.4-alpine
+FROM php:7.3-alpine
 
 # Install dev dependencies
 RUN apk add --no-cache --virtual .build-deps \
@@ -43,7 +42,9 @@ RUN docker-php-ext-enable \
     xdebug
 RUN docker-php-ext-configure zip --with-libzip
 RUN docker-php-ext-install \
+    calendar \
     curl \
+    exif \
     iconv \
     mbstring \
     pdo \
