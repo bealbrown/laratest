@@ -19,6 +19,8 @@ docker run --rm -v $(pwd):/app composer install
 
 sudo chown -R $USER:$USER ~/laratest
 
+docker-compose up -d
+
 docker-compose exec app nano .env
 
 cp .env.example .env
