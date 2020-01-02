@@ -1,48 +1,73 @@
-FROM php:7.2-fpm
 
-# Copy composer.lock and composer.json
-COPY composer.lock composer.json /var/www/
+FROM php:7.4-alpine
 
-# Set working directory
-WORKDIR /var/www
+# Install dev dependencies
+RUN apk add --no-cache --virtual .build-deps \
+    $PHPIZE_DEPS \
+    curl-dev \
+    imagemagick-dev \
+    libtool \
+    libxml2-dev \
+    postgresql-dev \
+    sqlite-dev
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    default-mysql-client \
-    libpng-dev \
-    libjpeg62-turbo-dev \
-    libfreetype6-dev \
-    locales \
-    zip \
-    jpegoptim optipng pngquant gifsicle \
-    vim \
-    unzip \
-    git \
+# Install production dependencies
+RUN apk add --no-cache \
+    bash \
     curl \
-    nano
+    g++ \
+    gcc \
+    git \
+    imagemagick \
+    libc-dev \
+    libpng-dev \
+    make \
+    mysql-client \
+    nodejs \
+    nodejs-npm \
+    yarn \
+    openssh-client \
+    postgresql-libs \
+    rsync \
+    zlib-dev \
+    libzip-dev
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install PECL and PEAR extensions
+RUN pecl install \
+    imagick \
+    xdebug
 
-# Install extensions
-RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl
-RUN docker-php-ext-configure gd --with-gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ --with-png-dir=/usr/include/
-RUN docker-php-ext-install gd
+# Install and enable php extensions
+RUN docker-php-ext-enable \
+    imagick \
+    xdebug
+RUN docker-php-ext-configure zip --with-libzip
+RUN docker-php-ext-install \
+    curl \
+    iconv \
+    mbstring \
+    pdo \
+    pdo_mysql \
+    pdo_pgsql \
+    pdo_sqlite \
+    pcntl \
+    tokenizer \
+    xml \
+    gd \
+    zip \
+    bcmath
 
 # Install composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+ENV COMPOSER_HOME /composer
+ENV PATH ./vendor/bin:/composer/vendor/bin:$PATH
+ENV COMPOSER_ALLOW_SUPERUSER 1
+RUN curl -s https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer
 
-# # Add user for laravel application
-# RUN groupadd -g 1000 www
-# RUN useradd -u 1000 -ms /bin/bash -g www www
+# Install PHP_CodeSniffer
+RUN composer global require "squizlabs/php_codesniffer=*"
 
-# Copy existing application directory contents
-COPY . /var/www
+# Cleanup dev dependencies
+RUN apk del -f .build-deps
 
-# Copy existing application directory permissions
-RUN chown -R www-data:www-data /var/www
-
-# Expose port 9000 and start php-fpm server
-EXPOSE 9000
-CMD ["php-fpm"]
+# Setup working directory
+WORKDIR /var/www
